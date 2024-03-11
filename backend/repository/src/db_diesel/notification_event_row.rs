@@ -109,7 +109,8 @@ impl<'a> NotificationEventRowRepository<'a> {
             .filter(
                 notification_event_dsl::status
                     .eq(NotificationEventStatus::Queued)
-                    .or(notification_event_dsl::status.eq(NotificationEventStatus::Errored)),
+                    .or(notification_event_dsl::status.eq(NotificationEventStatus::Errored)
+                        .and(notification_event_dsl::retry_at.le(diesel::dsl::now))),
             )
             .load::<NotificationEventRow>(&self.connection.connection)?;
         Ok(result)

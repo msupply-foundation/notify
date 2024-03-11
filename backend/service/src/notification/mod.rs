@@ -1,7 +1,7 @@
 use crate::service_provider::ServiceContext;
 use crate::settings::Settings;
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{ Utc, Duration };
 use lettre::address::AddressError;
 use repository::{
     NotificationEventRowRepository, NotificationEventStatus, NotificationType, RepositoryError,
@@ -14,6 +14,7 @@ pub mod enqueue;
 pub mod renderer;
 
 pub static MAX_SEND_ATTEMPTS: i32 = 3;
+pub static RETRY_DELAY_MINUTES: i64 = 15; // Doubles each retry
 
 // We use a trait for NotificationService to allow mocking in tests
 #[async_trait(?Send)]
@@ -191,6 +192,13 @@ impl NotificationServiceTrait for NotificationService {
                                 );
                                 notification.error_message = Some(format!("{:?}", send_error));
                                 notification.status = NotificationEventStatus::Errored;
+                                notification.retry_at = Some(
+                                    Utc::now().naive_utc() +
+                                    Duration::minutes(
+                                        RETRY_DELAY_MINUTES *
+                                        i64::pow(2, notification.send_attempts as u32 - 1)
+                                    )
+                                )
                             }
                             error_count += 1;
                             repo.update_one(&notification)?;
