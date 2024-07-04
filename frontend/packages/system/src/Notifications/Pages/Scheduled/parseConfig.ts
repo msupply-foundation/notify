@@ -52,6 +52,8 @@ export const defaultSchedulerNotification: ScheduledNotification = {
   scheduleStartTime: new Date(),
   subjectTemplate: '',
   bodyTemplate: '',
+  conditional: false,
+  conditionTemplate: '',
   notificationQueryIds: [],
   status: ConfigStatus.Disabled,
 };

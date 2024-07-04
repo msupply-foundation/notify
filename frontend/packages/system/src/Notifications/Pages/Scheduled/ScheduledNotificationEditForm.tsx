@@ -3,6 +3,7 @@ import {
   BasicTextInput,
   Box,
   BufferedTextArea,
+  Checkbox,
   DateTimeInput,
   Select,
   Typography,
@@ -45,6 +46,9 @@ export const ScheduledNotificationEditForm = ({
   const [bodyTemplateError, setBodyTemplateError] = useState<string | null>(
     null
   );
+  const [conditionTemplateError, setConditionTemplateError] = useState<
+    string | null
+  >(null);
 
   const { queryParams } = useQueryParamsState();
   queryParams.first = 1000; // Set a high limit to ensure all queries are fetched, if we end up with over 1000 queries we'll need a new solution, or if this is too slow...
@@ -108,6 +112,51 @@ export const ScheduledNotificationEditForm = ({
           maxRows={10}
         />
       </FormRow>
+
+      <FormRow title="">
+        <Checkbox
+          checked={draft.conditional}
+          onChange={e => {
+            onUpdate({ conditional: e.target.checked });
+          }}
+        />
+        <span>{t('label.conditional')}</span>
+        {draft.conditional && (
+          <>
+            <Typography sx={{ fontSize: '13px' }}>
+              {t('message.condition-template-help')}
+            </Typography>
+            <BufferedTextArea
+              helperText={conditionTemplateError}
+              error={!!conditionTemplateError}
+              required
+              value={draft.conditionTemplate}
+              onChange={e => {
+                onUpdate({ conditionTemplate: e.target.value });
+                try {
+                  validateTemplate(e.target.value);
+                  setConditionTemplateError(null);
+                } catch (e) {
+                  setConditionTemplateError(e as string);
+                }
+              }}
+              label={t('label.condition-template')}
+              InputProps={{
+                sx: {
+                  backgroundColor: 'background.menu',
+                  textarea: {
+                    resize: 'vertical',
+                    overflow: 'scroll',
+                  },
+                },
+              }}
+              InputLabelProps={{ shrink: true }}
+              minRows={3}
+              maxRows={10}
+            />
+          </>
+        )}
+      </FormRow>
       <Box padding={1}>
         <Typography sx={{ fontWeight: 700, fontSize: '13px' }}>
           {t('label.queries')}
@@ -143,6 +192,7 @@ export const ScheduledNotificationEditForm = ({
             })
           }
           options={[
+            { label: t('label.hourly'), value: 'hourly' },
             { label: t('label.daily'), value: 'daily' },
             { label: t('label.weekly'), value: 'weekly' },
             { label: t('label.monthly'), value: 'monthly' },

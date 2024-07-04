@@ -1,10 +1,14 @@
 use std::collections::HashMap;
+use tera::{Context, Tera};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use repository::{NotificationConfigKind, NotificationConfigRowRepository};
 use service::{
     notification::enqueue::{create_notification_events, NotificationContext, TemplateDefinition},
-    notification_config::{query::NotificationConfig, recipients::get_notification_targets, parameters::get_notification_parameters},
+    notification_config::{
+        parameters::get_notification_parameters, query::NotificationConfig,
+        recipients::get_notification_targets,
+    },
     service_provider::ServiceContext,
 };
 
@@ -121,7 +125,12 @@ fn try_process_scheduled_notifications(
     let param_results = get_notification_parameters(ctx, &scheduled_notification);
     let mut all_params = match param_results {
         Ok(val) => val,
-        Err(e) => return Err(NotificationError::InternalError(format!("Failed to fetch parameters: {:?}", e)))
+        Err(e) => {
+            return Err(NotificationError::InternalError(format!(
+                "Failed to fetch parameters: {:?}",
+                e
+            )))
+        }
     };
 
     if all_params.len() == 0 {
@@ -161,6 +170,34 @@ fn try_process_scheduled_notifications(
         let template_data = serde_json::to_value(template_params).map_err(|e| {
             NotificationError::InternalError(format!("Failed to parse template data: {:?}", e))
         })?;
+
+        // Check if the notification conditions are met
+        if config.conditional {
+            // Create a tera instance for this notification
+
+            let tera_context = Context::from_value(template_data.clone()).map_err(|e| {
+                NotificationError::InternalError(format!(
+                    "Failed to convert template data to tera context: {}",
+                    e.to_string()
+                ))
+            })?;
+
+            let condition_template_result =
+                Tera::one_off(&config.condition_template, &tera_context, false).map_err(|e| {
+                    NotificationError::InternalError(format!(
+                        "Failed to render condition template: {:?}",
+                        e
+                    ))
+                })?;
+
+            let condition_met = condition_template_result.contains("true")
+                && !condition_template_result.contains("false");
+
+            if !condition_met {
+                log::info!("Notification condition is false, skipping");
+                continue;
+            }
+        }
 
         // Send the notification
         let notification = NotificationContext {

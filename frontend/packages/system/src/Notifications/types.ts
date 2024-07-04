@@ -74,5 +74,7 @@ export interface ScheduledNotification extends BaseNotificationConfig {
   scheduleStartTime: Date;
   subjectTemplate: string;
   bodyTemplate: string;
+  conditional: boolean;
+  conditionTemplate: string;
   notificationQueryIds: string[];
 }
