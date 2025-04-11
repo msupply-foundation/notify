@@ -19,6 +19,8 @@ Clone this repository to a location on your local disk.
 
 You'll also need to create a Telegram bot and configure the token in `configuration/local.yaml`. Please follow the instructions in [this](https://github.com/msupply-foundation/notify/edit/main/backend/README.md) document.
 
+If you already have an existing local PostgreSQL database named 'dashboard' (e.g., from local mSupply dashboard setup), make sure you configure the correct username and password to access this database in `configuration/local.yaml`.
+
 ### Linux
 
 - For Ubuntu:
