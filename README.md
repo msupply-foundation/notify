@@ -15,6 +15,8 @@ You'll need to install the following tools
   - Or install [node.js](https://nodejs.org/), preferably the version in `frontend/.nvmrc`
 - [Yarn](https://yarnpkg.com/getting-started/install)
 
+Clone this repository to a location on your local disk.
+
 You'll also need to create a Telegram bot and configure the token in `configuration/local.yaml`. Please follow the instructions in [this](https://github.com/msupply-foundation/notify/edit/main/backend/README.md) document.
 
 ### Linux
