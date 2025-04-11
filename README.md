@@ -46,7 +46,7 @@ You may also need to run
 
 ## Running Notify locally
 
-To get the application running locally on your machine, run the following commands:
+To get the application running locally on your machine, navigate into the cloned repository using a terminal and run the following commands:
 
 ### 1. Build and start the backend
 
