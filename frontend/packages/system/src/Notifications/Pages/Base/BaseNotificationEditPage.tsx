@@ -27,6 +27,7 @@ import {
   RouteBuilder,
   BaseButton,
   ListIcon,
+  Tooltip,
 } from '@notify-frontend/common';
 
 import { BaseNotificationConfig } from '../../types';
@@ -160,6 +161,17 @@ export const BaseNotificationEditPage = <T extends BaseNotificationConfig>({
     }
   });
 
+  const saveConfig = () => {
+    onSave(draft);
+    setIsSaved(true);
+  };
+
+  const confirmBeforeSaving = useConfirmationModal({
+    title: t('label.notification-is-disabled'),
+    message: t('messages.saving-disabled-valid-notification'),
+    onConfirm: saveConfig,
+  });
+
   return (
     <>
       {isLoading ? (
@@ -288,8 +300,7 @@ export const BaseNotificationEditPage = <T extends BaseNotificationConfig>({
                       onClick={() => {
                         // Note, this doesn't update state, but that's good we don't want to save the nextDueDatetime again if the save button is used next.
                         draft.nextDueDatetime = new Date().toISOString();
-                        onSave(draft);
-                        setIsSaved(true);
+                        saveConfig();
                       }}
                       startIcon={<RunIcon />}
                       sx={{ fontSize: '12px' }}
@@ -298,18 +309,36 @@ export const BaseNotificationEditPage = <T extends BaseNotificationConfig>({
                     </LoadingButton>
                   )}
 
-                  <LoadingButton
-                    disabled={isSaved || isInvalid || !allParamsSet}
-                    isLoading={isLoading}
-                    onClick={() => {
-                      onSave(draft);
-                      setIsSaved(true);
-                    }}
-                    startIcon={<SaveIcon />}
-                    sx={{ fontSize: '12px' }}
+                  <Tooltip
+                    title={
+                      isEnabled(draft.status) && isInvalid
+                        ? t('messages.saving-enabled-invalid-notification')
+                        : ''
+                    }
                   >
-                    {t('button.save')}
-                  </LoadingButton>
+                    <span>
+                      <LoadingButton
+                        disabled={
+                          isSaved ||
+                          (isEnabled(draft.status) && isInvalid) ||
+                          !allParamsSet
+                        }
+                        isLoading={isLoading}
+                        onClick={() => {
+                          // prompt user if saving a valid config with disabled status - they may have forgotten to enable
+                          if (!isInvalid && !isEnabled(draft.status)) {
+                            confirmBeforeSaving();
+                          } else {
+                            saveConfig();
+                          }
+                        }}
+                        startIcon={<SaveIcon />}
+                        sx={{ fontSize: '12px' }}
+                      >
+                        {t('button.save')}
+                      </LoadingButton>
+                    </span>
+                  </Tooltip>
                 </Box>
               </Box>
             }
