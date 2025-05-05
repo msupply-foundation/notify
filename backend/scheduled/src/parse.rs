@@ -1,4 +1,4 @@
-use chrono::{DateTime, Days, Months, Utc};
+use chrono::{DateTime, Days, Duration, Months, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::NotificationError;
@@ -45,6 +45,10 @@ pub struct ScheduledNotificationPluginConfig {
     pub title: String,
     pub body_template: String,
     pub subject_template: String,
+    #[serde(default)]
+    pub conditional: bool,
+    #[serde(default)]
+    pub condition_template: String,
     pub schedule_frequency: String,
     pub schedule_start_time: DateTime<Utc>,
     #[serde(default)]
@@ -68,6 +72,17 @@ impl ScheduledNotificationPluginConfig {
         // Then add the duration to the schedule_start_time until we're past now
 
         match self.schedule_frequency.as_str() {
+            "hourly" => {
+                let mut next_due_date = self.schedule_start_time;
+                while next_due_date < now_utc {
+                    let option = next_due_date.checked_add_signed(Duration::hours(1));
+                    next_due_date = match option {
+                        Some(d) => d,
+                        None => return Err(NotificationError::InvalidNextDueDate),
+                    };
+                }
+                return Ok(next_due_date);
+            }
             "weekly" => {
                 let mut next_due_date = self.schedule_start_time;
                 while next_due_date < now_utc {

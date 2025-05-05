@@ -195,7 +195,11 @@
   "warning.caps-lock": "Warning: Caps lock is on",
   "label.subject-template": "Subject template",
   "label.body-template": "Body template",
+  "label.conditional": "Conditional",
+  "label.condition-template": "Condition template",
+  "message.condition-template-help": "The template should return either true or false. If true, the notification will be sent.",
   "label.parameters": "Parameters",
   "label.reference-name": "Reference Name",
-  "label.notification-type": "Notification Type"
+  "label.notification-type": "Notification Type",
+  "label.hourly": "Hourly"
 }
