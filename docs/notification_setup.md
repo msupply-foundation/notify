@@ -60,6 +60,8 @@ telegram:
 To use your new bot within telegram groups, you may need to disable privacy mode using the command `/setprivacy` in a chat with @BotFather.
 See: https://core.telegram.org/bots#6-botfather and https://core.telegram.org/bots/features#privacy-mode
 
+You'll also need to click on the link to the new bot chat provided by BotFather and click on Start to initialise it, as Notify may not recognise it otherwise.
+
 ## Setting up telegram recipients
 To add a telegram chat to your notify server, all you need to do is chat with the bot you created earlier, or add it to a group chat.
 

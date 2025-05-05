@@ -15,6 +15,12 @@ You'll need to install the following tools
   - Or install [node.js](https://nodejs.org/), preferably the version in `frontend/.nvmrc`
 - [Yarn](https://yarnpkg.com/getting-started/install)
 
+Clone this repository to a location on your local disk.
+
+You'll also need to create a Telegram bot and configure the token in `configuration/local.yaml`. Please follow the instructions in [this](https://github.com/msupply-foundation/notify/edit/main/backend/README.md) document.
+
+If you already have an existing local PostgreSQL database named 'dashboard' (e.g., from local mSupply dashboard setup), make sure you configure the correct username and password to access this database in `configuration/local.yaml`.
+
 ### Linux
 
 - For Ubuntu:
@@ -42,7 +48,7 @@ You may also need to run
 
 ## Running Notify locally
 
-To get the application running locally on your machine, run the following commands:
+To get the application running locally on your machine, navigate into the cloned repository using a terminal and run the following commands:
 
 ### 1. Build and start the backend
 
