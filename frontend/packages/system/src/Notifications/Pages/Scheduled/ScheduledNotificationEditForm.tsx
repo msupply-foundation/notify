@@ -119,6 +119,11 @@ export const ScheduledNotificationEditForm = ({
           setSelection={props => {
             onUpdate(props as Partial<ScheduledNotification>);
           }}
+          requiredQueryIds={draft.requiredQueryIds}
+          setRequiredQueryIds={ids => {
+            const patch = { ...draft, requiredQueryIds: ids };
+            onUpdate(patch as Partial<ScheduledNotification>);
+          }}
         />
       </Box>
       <FormRow title={t('label.schedule')}>
