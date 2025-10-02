@@ -91,15 +91,17 @@ impl ScheduledNotificationPluginConfig {
                 return Ok(next_due_date);
             }
             "monthly" => {
+                let mut look_forward = 1;
                 let mut next_due_date = self.schedule_start_time;
                 while next_due_date < now_utc {
                     // Note: chrono automatically handles leap years and returns last day of the month if day isn't valid for that month
                     // https://docs.rs/chrono/latest/chrono/naive/struct.NaiveDateTime.html#method.checked_add_months
-                    let option = next_due_date.checked_add_months(Months::new(1));
+                    let option = self.schedule_start_time.checked_add_months(Months::new(look_forward));
                     next_due_date = match option {
                         Some(d) => d,
                         None => return Err(NotificationError::InvalidNextDueDate),
                     };
+                    look_forward += 1;
                 }
                 return Ok(next_due_date);
             }
@@ -282,6 +284,23 @@ mod test {
         assert_eq!(
             next_due_date.unwrap(),
             Utc.with_ymd_and_hms(2025, 02, 28, 7, 0, 0).unwrap()
+        );
+
+        // Running through a short month
+        let config = ScheduledNotificationPluginConfig {
+            body_template: "".to_string(),
+            subject_template: "".to_string(),
+            schedule_frequency: "monthly".to_string(),
+            schedule_start_time: Utc.with_ymd_and_hms(2024, 01, 31, 7, 0, 0).unwrap(),
+            ..Default::default()
+        };
+
+        let now_utc: DateTime<Utc> = Utc.with_ymd_and_hms(2024, 03, 10, 0, 0, 0).unwrap();
+        let next_due_date = config.next_due_date(now_utc);
+        assert!(next_due_date.is_ok());
+        assert_eq!(
+            next_due_date.unwrap(),
+            Utc.with_ymd_and_hms(2024, 03, 31, 7, 0, 0).unwrap()
         );
     }
 }
