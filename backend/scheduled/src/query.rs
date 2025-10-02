@@ -7,11 +7,17 @@ use service::service_provider::ServiceContext;
 
 use crate::{parse::ScheduledNotificationPluginConfig, NotificationError};
 
+pub enum NotificationQueryResult {
+    Success(HashMap<String, serde_json::Value>),
+    Skipped(String),
+}
+
 pub fn get_notification_query_results(
     ctx: &ServiceContext,
     parameters: serde_json::Value,
     config: &ScheduledNotificationPluginConfig,
-) -> Result<HashMap<String, serde_json::Value>, NotificationError> {
+    required_query_ids: Vec<String>,
+) -> Result<NotificationQueryResult, NotificationError> {
     let mut query_results = HashMap::new();
 
     // get all the configured queries
@@ -47,6 +53,17 @@ pub fn get_notification_query_results(
                 json!([{"error": "error running query", "query": query.query, "parameters": parameters}])
             }
         };
+
+        // If the query is required and there are no results, return an error
+        if required_query_ids.contains(&query.id)
+            && (query_json.as_array().map_or(true, |arr| arr.is_empty()))
+        {
+            return Ok(NotificationQueryResult::Skipped(format!(
+                "Required query {} returned no results",
+                query.reference_name
+            )));
+        }
+
         let end_time = chrono::Utc::now();
         info!(
             "Query {} took {}ms",
@@ -57,7 +74,7 @@ pub fn get_notification_query_results(
         query_results.insert(query.reference_name, query_json);
     }
 
-    Ok(query_results)
+    Ok(NotificationQueryResult::Success(query_results))
 }
 
 #[cfg(test)]
@@ -66,8 +83,8 @@ mod tests {
 
     use repository::{
         mock::{
-            mock_notification_query_with_no_param_2_rows, mock_notification_query_with_params,
-            MockDataInserts,
+            mock_notification_query_with_no_param_2_rows, mock_notification_query_with_no_rows,
+            mock_notification_query_with_params, MockDataInserts,
         },
         test_db::setup_all,
         NotificationConfigStatus,
@@ -117,7 +134,15 @@ mod tests {
 
         // Call the function being tested
         let query_results =
-            get_notification_query_results(&context, all_params[0].clone(), &config).unwrap();
+            get_notification_query_results(&context, all_params[0].clone(), &config, vec![])
+                .unwrap();
+
+        let query_results = match query_results {
+            NotificationQueryResult::Success(results) => results,
+            NotificationQueryResult::Skipped(reason) => {
+                panic!("Query was skipped: {}", reason);
+            }
+        };
 
         let result_key = mock_notification_query_with_no_param_2_rows().reference_name;
 
@@ -182,7 +207,15 @@ mod tests {
 
         // Call the function being tested
         let query_results =
-            get_notification_query_results(&context, all_params[0].clone(), &config).unwrap();
+            get_notification_query_results(&context, all_params[0].clone(), &config, vec![])
+                .unwrap();
+
+        let query_results = match query_results {
+            NotificationQueryResult::Success(results) => results,
+            NotificationQueryResult::Skipped(reason) => {
+                panic!("Query was skipped: {}", reason);
+            }
+        };
 
         let result_key = mock_notification_query_with_params().reference_name;
 
@@ -245,7 +278,15 @@ mod tests {
 
         // Call the function being tested
         let query_results =
-            get_notification_query_results(&context, all_params[0].clone(), &config).unwrap();
+            get_notification_query_results(&context, all_params[0].clone(), &config, vec![])
+                .unwrap();
+
+        let query_results = match query_results {
+            NotificationQueryResult::Success(results) => results,
+            NotificationQueryResult::Skipped(reason) => {
+                panic!("Query was skipped: {}", reason);
+            }
+        };
 
         // Check we got the 2 results we expected
         assert_eq!(query_results.len(), 2);
@@ -326,13 +367,78 @@ mod tests {
         };
 
         // Call the function being tested
-        let result =
-            get_notification_query_results(&context, all_params[0].clone(), &config).unwrap();
+        let query_results =
+            get_notification_query_results(&context, all_params[0].clone(), &config, vec![])
+                .unwrap();
+
+        let query_results = match query_results {
+            NotificationQueryResult::Success(results) => results,
+            NotificationQueryResult::Skipped(reason) => {
+                panic!("Query was skipped: {}", reason);
+            }
+        };
 
         // Check we got the error we expected
         assert_eq!(
-            result.get("query1").unwrap()[0]["error"].as_str().unwrap(),
+            query_results.get("query1").unwrap()[0]["error"]
+                .as_str()
+                .unwrap(),
             "error running query"
         );
+    }
+
+    // Test that required queries return Skipped when they return no results
+    #[tokio::test]
+    async fn test_get_notification_query_results_required_query_no_results() {
+        let (_, _, connection_manager, _) = setup_all(
+            "test_get_notification_query_results_required_query_no_results",
+            MockDataInserts::none().notification_queries(),
+        )
+        .await;
+        let service_provider = Arc::new(ServiceProvider::new(
+            connection_manager,
+            get_test_settings(""),
+        ));
+        let context = ServiceContext::as_server_admin(service_provider).unwrap();
+
+        // Create an empty notification config with no params to use
+        let all_params: Vec<serde_json::Value> = serde_json::from_str("[{}]")
+            .map_err(|e| {
+                NotificationError::InternalError(format!(
+                    "Failed to parse notification parameters: {:?}",
+                    e
+                ))
+            })
+            .unwrap();
+
+        let mock_query = mock_notification_query_with_no_rows();
+        let config = ScheduledNotificationPluginConfig {
+            notification_query_ids: vec![mock_query.id.clone()],
+            required_query_ids: vec![mock_query.id.clone()],
+            ..Default::default()
+        };
+
+        // Call the function being tested with the query marked as required
+        let query_results = get_notification_query_results(
+            &context,
+            all_params[0].clone(),
+            &config,
+            vec![mock_query.id.clone()],
+        )
+        .unwrap();
+
+        // Check that we got Skipped result
+        match query_results {
+            NotificationQueryResult::Skipped(reason) => {
+                assert!(
+                    reason.contains("Required query"),
+                    "Expected skip reason to mention required query with no results, got: {}",
+                    reason
+                );
+            }
+            NotificationQueryResult::Success(_) => {
+                panic!("Expected Skipped result but got Success");
+            }
+        }
     }
 }
