@@ -4,6 +4,7 @@ pub fn mock_notification_queries() -> Vec<NotificationQueryRow> {
     vec![
         mock_notification_query_with_params(),
         mock_notification_query_with_no_param_2_rows(),
+        mock_notification_query_with_no_rows(),
     ]
 }
 
@@ -32,6 +33,19 @@ SELECT 1.51 as latest_temperature, 'sensor2' as sensor_name, -10 as sensor_limit
         query: sql_query.to_string(),
         required_parameters: "[]".to_string(),
         reference_name: String::from("query2"),
+        ..Default::default()
+    }
+}
+
+pub fn mock_notification_query_with_no_rows() -> NotificationQueryRow {
+    let sql_query = r#"SELECT 1 as value WHERE 1 = 0"#;
+    NotificationQueryRow {
+        id: String::from("id_notification_query_no_rows"),
+        name: String::from("notification_query_no_rows"),
+        description: String::from("Returns no rows - for testing required query behavior"),
+        query: sql_query.to_string(),
+        required_parameters: "[]".to_string(),
+        reference_name: String::from("query_no_rows"),
         ..Default::default()
     }
 }

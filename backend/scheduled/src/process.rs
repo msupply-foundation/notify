@@ -4,7 +4,10 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use repository::{NotificationConfigKind, NotificationConfigRowRepository};
 use service::{
     notification::enqueue::{create_notification_events, NotificationContext, TemplateDefinition},
-    notification_config::{query::NotificationConfig, recipients::get_notification_targets, parameters::get_notification_parameters},
+    notification_config::{
+        parameters::get_notification_parameters, query::NotificationConfig,
+        recipients::get_notification_targets,
+    },
     service_provider::ServiceContext,
 };
 
@@ -121,7 +124,12 @@ fn try_process_scheduled_notifications(
     let param_results = get_notification_parameters(ctx, &scheduled_notification);
     let mut all_params = match param_results {
         Ok(val) => val,
-        Err(e) => return Err(NotificationError::InternalError(format!("Failed to fetch parameters: {:?}", e)))
+        Err(e) => {
+            return Err(NotificationError::InternalError(format!(
+                "Failed to fetch parameters: {:?}",
+                e
+            )))
+        }
     };
 
     if all_params.len() == 0 {
@@ -153,7 +161,21 @@ fn try_process_scheduled_notifications(
             continue;
         }
 
-        let sql_query_parameters = get_notification_query_results(ctx, sql_params, &config)?;
+        let sql_query_parameters = get_notification_query_results(
+            ctx,
+            sql_params,
+            &config,
+            config.required_query_ids.clone(),
+        )?;
+
+        // If any required queries were skipped, skip this notification
+        let sql_query_parameters = match sql_query_parameters {
+            crate::query::NotificationQueryResult::Success(results) => results,
+            crate::query::NotificationQueryResult::Skipped(reason) => {
+                log::info!("Skipping notification: {}", reason);
+                continue;
+            }
+        };
 
         // Template data should include the notification config parameters, plus the results of any queries
         template_params.extend(sql_query_parameters);

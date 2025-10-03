@@ -53,6 +53,7 @@ export const defaultSchedulerNotification: ScheduledNotification = {
   subjectTemplate: '',
   bodyTemplate: '',
   notificationQueryIds: [],
+  requiredQueryIds: [],
   status: ConfigStatus.Disabled,
 };
 

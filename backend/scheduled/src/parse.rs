@@ -14,6 +14,9 @@ use crate::NotificationError;
         "98533e08-99bb-4b18-a045-db67e1852d73",
         "aca03f15-96a1-4f36-bd80-1fd34331a5f1"
     ],
+    "requiredQueryIds": [
+        "72e5342f-08b7-499b-8a51-339ae142f68a"
+    ],
     "parameters": "{\"email_address\":\"test@example.com\",\"project\":\"prj1\",\"province\":\"prov1\"}",
     "parsedParameters": {
         "email_address": "test@example.com",
@@ -49,6 +52,8 @@ pub struct ScheduledNotificationPluginConfig {
     pub schedule_start_time: DateTime<Utc>,
     #[serde(default)]
     pub notification_query_ids: Vec<String>,
+    #[serde(default)]
+    pub required_query_ids: Vec<String>,
 }
 
 impl ScheduledNotificationPluginConfig {
