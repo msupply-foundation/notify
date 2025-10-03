@@ -121,7 +121,7 @@ export const ScheduledNotificationEditForm = ({
           }}
           requiredQueryIds={draft.requiredQueryIds}
           setRequiredQueryIds={ids => {
-            const patch = { ...draft, requiredQueryIds: ids };
+            const patch = { requiredQueryIds: ids };
             onUpdate(patch as Partial<ScheduledNotification>);
           }}
         />
