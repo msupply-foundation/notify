@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Dispatch, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import {
@@ -47,7 +47,7 @@ interface BaseNotificationEditPageProps<T extends BaseNotificationConfig> {
   allowParameterSets?: boolean;
   showRunButton?: boolean;
   draft: T;
-  setDraft: (draft: T) => void;
+  setDraft: Dispatch<React.SetStateAction<T>>;
   onSave: (draft: T) => Promise<void>;
   CustomForm: React.FC<{
     onUpdate: (patch: Partial<T>) => void;
@@ -84,7 +84,7 @@ export const BaseNotificationEditPage = <T extends BaseNotificationConfig>({
   const { mutateAsync: duplicate } = useDuplicateNotificationConfig();
 
   const onUpdate = (patch: Partial<T>) => {
-    setDraft({ ...draft, ...patch });
+    setDraft(draft => ({ ...draft, ...patch }));
     setIsSaved(false);
   };
 
@@ -172,7 +172,9 @@ export const BaseNotificationEditPage = <T extends BaseNotificationConfig>({
             allowParameterSets={allowParameterSets}
             onUpdateParams={onUpdateParams}
             onDeleteParam={onDeleteParam}
-            onChangeParameterQuery={x => onUpdate({ parameterQueryId: x } as Partial<T>)}
+            onChangeParameterQuery={x =>
+              onUpdate({ parameterQueryId: x } as Partial<T>)
+            }
             parameterQueryId={draft.parameterQueryId}
           />
           <AppBarButtonsPortal sx={{ display: 'flex', gap: '14px' }}>
