@@ -55,13 +55,23 @@ pub fn get_notification_query_results(
         };
 
         // If the query is required and there are no results, return an error
-        if required_query_ids.contains(&query.id)
-            && (query_json.as_array().map_or(true, |arr| arr.is_empty()))
-        {
-            return Ok(NotificationQueryResult::Skipped(format!(
-                "Required query {} returned no results",
-                query.reference_name
-            )));
+        if required_query_ids.contains(&query.id) {
+            match query_json.as_array() {
+                Some(arr) if arr.is_empty() => {
+                    return Ok(NotificationQueryResult::Skipped(format!(
+                        "Required query {} returned no results",
+                        query.reference_name
+                    )));
+                }
+                None => {
+                    return Err(NotificationError::InternalError(format!(
+                        "Required query {} did not return an array (got: {})",
+                        query.reference_name,
+                        query_json
+                    )));
+                }
+                _ => {}
+            }
         }
 
         let end_time = chrono::Utc::now();
