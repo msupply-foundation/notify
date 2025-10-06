@@ -29,7 +29,8 @@ pub fn process_scheduled_notifications(
         .find_all_due_by_kind(ctx, NotificationConfigKind::Scheduled, current_time)
         .map_err(|e| NotificationError::InternalError(format!("{:?}", e)))?;
     let notifications_processed = scheduled_notifications.len();
-    let mut successful_notifications = 0;
+    let mut successful_notification_configs = 0;
+    let mut created_notifications = 0;
     let mut errored_notifications = 0;
     let mut skipped_notifications = 0;
     for scheduled_notification in scheduled_notifications {
@@ -46,27 +47,30 @@ pub fn process_scheduled_notifications(
                 log::error!("{:?}", e);
                 errored_notifications += 1;
             }
-            Ok(ProcessingResult::Skipped(message)) => {
-                log::info!("{}", message);
-                skipped_notifications += 1;
-            }
-            Ok(ProcessingResult::Success) => {
-                log::info!("Successfully created notification events");
-                successful_notifications += 1;
+            Ok(processing_result) => {
+                log::info!(
+                    "Processing result: skipped {}, notifications created {}",
+                    processing_result.skipped_count,
+                    processing_result.notifications_created
+                );
+                successful_notification_configs += 1;
+                created_notifications += processing_result.notifications_created;
+                skipped_notifications += processing_result.skipped_count;
             }
         }
         let end_time = Utc::now();
         log::info!(
-            "Processed {} Notification in {}s",
+            "Processed {} Notification Config in {}s",
             notification_name,
             (end_time - start_time).num_seconds()
         );
     }
     // Return the number of notifications processed
     log::info!(
-        "Processed {} out of {} scheduled notifications, skipped {} and errored {}",
-        successful_notifications,
+        "Processed {} out of {} scheduled configs, notifications created {}, skipped {} and errored {}",
+        successful_notification_configs,
         notifications_processed,
+        created_notifications,
         skipped_notifications,
         errored_notifications
     );
@@ -74,9 +78,9 @@ pub fn process_scheduled_notifications(
 }
 
 #[derive(Debug, PartialEq)]
-enum ProcessingResult {
-    Success,
-    Skipped(String),
+struct ProcessingResult {
+    skipped_count: usize,
+    notifications_created: usize,
 }
 
 fn try_process_scheduled_notifications(
@@ -84,6 +88,11 @@ fn try_process_scheduled_notifications(
     scheduled_notification: NotificationConfig,
     now: NaiveDateTime,
 ) -> Result<ProcessingResult, NotificationError> {
+    let mut notification_result = ProcessingResult {
+        skipped_count: 0,
+        notifications_created: 0,
+    };
+
     // Load the notification config
     let config =
         ScheduledNotificationPluginConfig::from_string(&scheduled_notification.configuration_data)?;
@@ -107,18 +116,29 @@ fn try_process_scheduled_notifications(
     let previous_due_datetime = match previous_due_datetime {
         Some(dt) => dt,
         None => {
-            return Ok(ProcessingResult::Skipped(format!(
-                "No next due time for scheduled notification {}, setting to {}",
-                scheduled_notification.id, next_due_datetime
-            )));
+            log::info!(
+                "No previous due time for scheduled notification {}, setting to {}",
+                scheduled_notification.id,
+                next_due_datetime
+            );
+
+            notification_result.skipped_count += 1;
+
+            return Ok(notification_result);
         }
     };
 
     if previous_due_datetime > now {
-        return Ok(ProcessingResult::Skipped(format!(
-            "Scheduled notification {} is not due yet, skipping",
-            scheduled_notification.id
-        )));
+        log::info!(
+            "Scheduled notification {} is not due yet (previous due: {}, now: {}), skipping",
+            scheduled_notification.id,
+            previous_due_datetime,
+            now
+        );
+
+        notification_result.skipped_count += 1;
+
+        return Ok(notification_result);
     }
 
     let param_results = get_notification_parameters(ctx, &scheduled_notification);
@@ -158,6 +178,7 @@ fn try_process_scheduled_notifications(
         // If there are no recipients, skip this parameter set
         if notification_targets.is_empty() {
             log::info!("No notification targets, skipping");
+            notification_result.skipped_count += 1;
             continue;
         }
 
@@ -173,6 +194,7 @@ fn try_process_scheduled_notifications(
             crate::query::NotificationQueryResult::Success(results) => results,
             crate::query::NotificationQueryResult::Skipped(reason) => {
                 log::info!("Skipping notification: {}", reason);
+                notification_result.skipped_count += 1;
                 continue;
             }
         };
@@ -196,9 +218,10 @@ fn try_process_scheduled_notifications(
 
         create_notification_events(ctx, Some(scheduled_notification.id.clone()), notification)
             .map_err(|e| NotificationError::InternalError(format!("{:?}", e)))?;
+        notification_result.notifications_created += 1;
     }
 
-    Ok(ProcessingResult::Success)
+    Ok(notification_result)
 }
 
 #[cfg(test)]
@@ -296,7 +319,13 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(result, ProcessingResult::Success);
+        assert_eq!(
+            result,
+            ProcessingResult {
+                skipped_count: 0,
+                notifications_created: 1
+            }
+        );
 
         // Query the database to check that we have a notification events for each recipient
         let repo = NotificationEventRowRepository::new(&service_context.connection);
@@ -352,7 +381,13 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(result, ProcessingResult::Success);
+        assert_eq!(
+            result,
+            ProcessingResult {
+                skipped_count: 0,
+                notifications_created: 1
+            }
+        );
 
         // Query the database to check that we have a notification events for the 1 configured recipient
         let repo = NotificationEventRowRepository::new(&service_context.connection);
@@ -410,7 +445,13 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(result, ProcessingResult::Success);
+        assert_eq!(
+            result,
+            ProcessingResult {
+                skipped_count: 0,
+                notifications_created: 1
+            }
+        );
 
         // Query the database to check that we have a notification events
         let repo = NotificationEventRowRepository::new(&service_context.connection);
@@ -471,7 +512,13 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(result, ProcessingResult::Success);
+        assert_eq!(
+            result,
+            ProcessingResult {
+                skipped_count: 0,
+                notifications_created: 1
+            }
+        );
 
         // Query the database to check that we have a notification events
         let repo = NotificationEventRowRepository::new(&service_context.connection);
@@ -540,7 +587,13 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(result, ProcessingResult::Success); // TODO: This shouldn't be a success I think!
+        assert_eq!(
+            result,
+            ProcessingResult {
+                skipped_count: 0,
+                notifications_created: 1
+            }
+        ); // Should be skipped due to template error
 
         // Query the database to check that we have no unsent notification events (There is a template error so nothing should be sent!)
         let repo = NotificationEventRowRepository::new(&service_context.connection);
