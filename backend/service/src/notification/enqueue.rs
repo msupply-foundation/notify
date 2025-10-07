@@ -330,7 +330,7 @@ mod test {
 
         // Check we have a notification event with error message
         let notification_event_row_repository = NotificationEventRowRepository::new(&connection);
-        let notification_event_rows = notification_event_row_repository.un_sent().unwrap();
+        let notification_event_rows = notification_event_row_repository.errors().unwrap();
 
         assert_eq!(notification_event_rows.len(), 1);
         assert_eq!(notification_event_rows[0].to_address, "".to_string());
