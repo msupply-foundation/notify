@@ -109,9 +109,21 @@ impl<'a> NotificationEventRowRepository<'a> {
             .filter(
                 notification_event_dsl::status
                     .eq(NotificationEventStatus::Queued)
-                    .or(notification_event_dsl::status.eq(NotificationEventStatus::Errored)
+                    .or(notification_event_dsl::status
+                        .eq(NotificationEventStatus::Errored)
                         .and(notification_event_dsl::retry_at.le(diesel::dsl::now))),
             )
+            .load::<NotificationEventRow>(&self.connection.connection)?;
+        Ok(result)
+    }
+
+    // Used for tests only
+    pub fn errors(&self) -> Result<Vec<NotificationEventRow>, RepositoryError> {
+        let result = notification_event_dsl::notification_event
+            .filter(notification_event_dsl::status.eq_any(vec![
+                NotificationEventStatus::Failed,
+                NotificationEventStatus::Errored,
+            ]))
             .load::<NotificationEventRow>(&self.connection.connection)?;
         Ok(result)
     }
