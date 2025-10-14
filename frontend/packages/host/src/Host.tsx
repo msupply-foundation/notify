@@ -68,7 +68,7 @@ const Host = () => (
                 <AppThemeProvider>
                   <ConfirmationModalProvider>
                     <AlertModalProvider>
-                      <BrowserRouter>
+                      <BrowserRouter basename={Environment.BASE_PATH}>
                         <AuthenticationAlert />
                         <Viewport>
                           <Box display="flex" minHeight="100%">
