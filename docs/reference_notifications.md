@@ -57,7 +57,7 @@ CROSS JOIN item i
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
-LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id
+LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
 WHERE aggmos.value IS NOT NULL -- Don't show items that don't have a mos calculated, this might be an issue?
 AND aggmos.value < 3.0
 AND s.name = '{{store_name}}'
@@ -196,7 +196,7 @@ CROSS JOIN item i
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
-LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id
+LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
 LEFT JOIN prev_soh ON prev_soh.storeid = s.id AND prev_soh.itemid = i.id
 WHERE
 s.name = '{{ store_name }}'
