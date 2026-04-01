@@ -42,7 +42,7 @@ s.code,
 s.name as store_name,
 i.code as item_code,
 i.item_name,
-i.units,
+u.units,
 max(aggamc.value) as amc,
 SUM(quantity * pack_size) AS soh,
 max(aggmos.value) as mos,
@@ -54,6 +54,7 @@ max(pos.supplier_name) as supplier
 FROM
 store s
 CROSS JOIN item i
+LEFT JOIN unit u ON i.unit_ID = u.id
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
@@ -180,7 +181,7 @@ s.code,
 s.name as store_name,
 i.code as item_code,
 i.item_name,
-i.units,
+u.units,
 max(aggamc.value) as amc,
 SUM(quantity * pack_size) AS soh,
 max(aggmos.value) as mos,
@@ -193,6 +194,7 @@ max(prev_soh.soh) as prev_soh
 FROM
 store s
 CROSS JOIN item i
+LEFT JOIN unit u ON i.unit_ID = u.id
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
