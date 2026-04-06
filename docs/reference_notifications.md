@@ -84,6 +84,8 @@ GROUP BY 1,2,3,4,5
 {% if critical_stock and critical_stock | length > 0 %}
 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
 <tr style="background-color: #f0f0f0;">
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Store Name</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC ({{ consumption_months }} months)</th>
@@ -97,6 +99,8 @@ GROUP BY 1,2,3,4,5
 </tr>
 {% for item in critical_stock %}
 <tr>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["store_name"] }}</td>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_code"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_name"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["units"] | default(value="") }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["amc"] | default(value=0) | round(precision=2) }}</td>
@@ -223,6 +227,8 @@ HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size)
 <h2 style="color: #333; margin-top: 0; text-align: center;">Daily Out of Stock Notifications</h2>
 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
 <tr style="background-color: #f0f0f0;">
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Store Name</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC ({{ consumption_months }} months)</th>
@@ -236,6 +242,8 @@ HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size)
 </tr>
 {% for item in stock_out_today %}
 <tr>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["store_name"] }}</td>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_code"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_name"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["units"] | default(value="") }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["amc"] | default(value=0) | round(precision=2) }}</td>
