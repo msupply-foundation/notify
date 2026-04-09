@@ -88,9 +88,9 @@ GROUP BY 1,2,3,4,5
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC ({{ consumption_months }} months)</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC (12 months)</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">SOH</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining ({{ consumption_months }} months)</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Placed</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Number</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Stock on Order</th>
@@ -124,11 +124,10 @@ GROUP BY 1,2,3,4,5
 
 #### Parameters
 
-| Key                  | Requirements                                                                                  |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| `master_list_name`   | Must match a master list name in mSupply, if it's re-named the notification will stop working |
-| `store_name`         | Which store you want to send notifications for, if it's renamed the notification will stop.   |
-| `consumption_months` | The number of months used as the basis for AMC and MOS calculations (e.g. `12`).              |
+| Key                | Requirements                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `master_list_name` | Must match a master list name in mSupply, if it's re-named the notification will stop working |
+| `store_name`       | Which store you want to send notifications for, if it's renamed the notification will stop.   |
 
 ### Behaviour
 
@@ -231,9 +230,9 @@ HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size)
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC ({{ consumption_months }} months)</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC (12 months)</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">SOH</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining ({{ consumption_months }} months)</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Placed</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Number</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Stock on Order</th>
@@ -266,11 +265,10 @@ HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size)
 
 #### Parameters
 
-| Key                  | Requirements                                                                                  |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| `master_list_name`   | Must match a master list name in mSupply, if it's re-named the notification will stop working |
-| `store_name`         | Which store you want to send notifications for, if it's renamed the notification will stop.   |
-| `consumption_months` | The number of months used as the basis for AMC and MOS calculations (e.g. `12`).              |
+| Key                | Requirements                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `master_list_name` | Must match a master list name in mSupply, if it's re-named the notification will stop working |
+| `store_name`       | Which store you want to send notifications for, if it's renamed the notification will stop.   |
 
 ### Behaviour
 
