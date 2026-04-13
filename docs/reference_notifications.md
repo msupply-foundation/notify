@@ -26,11 +26,14 @@ with pos AS(
     po.store_id,
     pol.item_id,
     po.confirm_date,
+    po.serial_number,
+    n.name AS supplier_name,
     pol.delivery_date_expected,
     RANK() OVER (PARTITION BY po.store_id, pol.item_id ORDER BY po.confirm_date DESC) AS ranking,
     pol.quan_adjusted_order-pol.quan_rec_to_date AS po_outstanding
   FROM purchase_order po
   JOIN purchase_order_line pol ON po.id = pol.purchase_order_id
+  JOIN name n ON po.name_id = n.id
   WHERE po.status IN ('cn')
   AND pol.quan_adjusted_order-pol.quan_rec_to_date > 0
 )
@@ -39,22 +42,28 @@ s.code,
 s.name as store_name,
 i.code as item_code,
 i.item_name,
+u.units,
 max(aggamc.value) as amc,
-max(aggmos.value) as mos,
 SUM(quantity * pack_size) AS soh,
-max(pos.confirm_date) as latest_po_date
+max(aggmos.value) as mos,
+max(pos.confirm_date) as latest_po_date,
+max(pos.serial_number) as po_number,
+max(pos.po_outstanding) as stock_on_order,
+max(pos.delivery_date_expected) as delivery_date,
+max(pos.supplier_name) as supplier
 FROM
 store s
 CROSS JOIN item i
+LEFT JOIN unit u ON i.unit_ID = u.id
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
-LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id
+LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
 WHERE aggmos.value IS NOT NULL -- Don't show items that don't have a mos calculated, this might be an issue?
 AND aggmos.value < 3.0
 AND s.name = '{{store_name}}'
 AND i.id in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{master_list_name}}')
-GROUP BY 1,2,3,4
+GROUP BY 1,2,3,4,5
 
 ```
 
@@ -70,22 +79,38 @@ GROUP BY 1,2,3,4
 <title>Critical Items Report for {{ store_name }}</title>
 </head>
 <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
-<div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px;">
+<div style="max-width: 800px; margin: 0 auto; background-color: white; padding: 20px;">
 <h2 style="color: #333; margin-top: 0; text-align: center;">Critical Items Availability Report</h2>
 {% if critical_stock and critical_stock | length > 0 %}
 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
 <tr style="background-color: #f0f0f0;">
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Store Name</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Months of Stock Remaining</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC (12 months)</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">SOH</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Placed</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Number</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Stock on Order</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Delivery Date</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Supplier</th>
 </tr>
 {% for item in critical_stock %}
 <tr>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["store_name"] }}</td>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_code"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_name"] }}</td>
-<td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["mos"] | default(value=0) | round(precision=2) }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["units"] | default(value="") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["amc"] | default(value=0) | round(precision=2) }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["soh"] | default(value=0) | round }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["mos"] | default(value=0) | round(precision=2) }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["latest_po_date"] | default(value="No") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["po_number"] | default(value="") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["stock_on_order"] | default(value=0) | round }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["delivery_date"] | default(value="") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["supplier"] | default(value="") }}</td>
 </tr>
 {% endfor %}
 </table>
@@ -129,11 +154,14 @@ Sent every day, this notification lists all stock items that are completely out 
     po.store_id,
     pol.item_id,
     po.confirm_date,
+    po.serial_number,
+    n.name AS supplier_name,
     pol.delivery_date_expected,
     RANK() OVER (PARTITION BY po.store_id, pol.item_id ORDER BY po.confirm_date DESC) AS ranking,
     pol.quan_adjusted_order-pol.quan_rec_to_date AS po_outstanding
   FROM purchase_order po
   JOIN purchase_order_line pol ON po.id = pol.purchase_order_id
+  JOIN name n ON po.name_id = n.id
   WHERE po.status IN ('cn')
   AND pol.quan_adjusted_order-pol.quan_rec_to_date > 0
 ),
@@ -156,21 +184,29 @@ s.code,
 s.name as store_name,
 i.code as item_code,
 i.item_name,
+u.units,
+max(aggamc.value) as amc,
 SUM(quantity * pack_size) AS soh,
+max(aggmos.value) as mos,
 max(pos.confirm_date) as latest_po_date,
-max(prev_soh.soh) as prev_soh,
-max(aggamc.value) as amc
+max(pos.serial_number) as po_number,
+max(pos.po_outstanding) as stock_on_order,
+max(pos.delivery_date_expected) as delivery_date,
+max(pos.supplier_name) as supplier,
+max(prev_soh.soh) as prev_soh
 FROM
 store s
 CROSS JOIN item i
+LEFT JOIN unit u ON i.unit_ID = u.id
 LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
-LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id
+LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
+LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
 LEFT JOIN prev_soh ON prev_soh.storeid = s.id AND prev_soh.itemid = i.id
 WHERE
 s.name = '{{ store_name }}'
 AND i.id in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
-GROUP BY 1,2,3,4
+GROUP BY 1,2,3,4,5
 HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size) = 0
 
 ```
@@ -186,21 +222,37 @@ HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size)
 <meta charset="UTF-8">
 </head>
 <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
-<div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px;">
+<div style="max-width: 800px; margin: 0 auto; background-color: white; padding: 20px;">
 <h2 style="color: #333; margin-top: 0; text-align: center;">Daily Out of Stock Notifications</h2>
 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
 <tr style="background-color: #f0f0f0;">
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Store Name</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Code</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Item Name</th>
-<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Units</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">AMC (12 months)</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">SOH</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">MOS Remaining</th>
 <th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Placed</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">PO Number</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Stock on Order</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Delivery Date</th>
+<th style="border: 1px solid #ccc; padding: 10px; text-align: center;">Supplier</th>
 </tr>
 {% for item in stock_out_today %}
 <tr>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["store_name"] }}</td>
+<td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_code"] }}</td>
 <td style="border: 1px solid #ccc; padding: 10px;">{{ item["item_name"] }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["units"] | default(value="") }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["amc"] | default(value=0) | round(precision=2) }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["soh"] | default(value=0) | round }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center; font-weight: bold;">{{ item["mos"] | default(value=0) | round(precision=2) }}</td>
 <td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["latest_po_date"] | default(value="No") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["po_number"] | default(value="") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["stock_on_order"] | default(value=0) | round }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["delivery_date"] | default(value="") }}</td>
+<td style="border: 1px solid #ccc; padding: 10px; text-align: center;">{{ item["supplier"] | default(value="") }}</td>
 </tr>
 {% endfor %}
 </table>
