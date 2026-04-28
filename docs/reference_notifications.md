@@ -36,6 +36,12 @@ with pos AS(
   JOIN name n ON po.name_id = n.id
   WHERE po.status IN ('cn')
   AND pol.quan_adjusted_order-pol.quan_rec_to_date > 0
+),
+current_soh AS (
+SELECT il.item_id, il.store_id, COALESCE(SUM(il.quantity * il.pack_size), 0) AS soh
+FROM item_line il
+WHERE (il.expiry_date IS NULL OR il.expiry_date >= current_date)
+GROUP BY il.item_id, il.store_id
 )
 SELECT
 s.code,
@@ -44,7 +50,7 @@ i.code as item_code,
 i.item_name,
 u.units,
 max(aggamc.value) as amc,
-SUM(quantity * pack_size) AS soh,
+COALESCE(max(current_soh.soh), 0) AS soh,
 max(aggmos.value) as mos,
 max(pos.confirm_date) as latest_po_date,
 max(pos.serial_number) as po_number,
@@ -55,9 +61,9 @@ FROM
 store s
 CROSS JOIN item i
 LEFT JOIN unit u ON i.unit_ID = u.id
+LEFT JOIN current_soh ON current_soh.item_id = i.id AND current_soh.store_id = s.id
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
-LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
 LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
 WHERE aggmos.value IS NOT NULL -- Don't show items that don't have a mos calculated, this might be an issue?
 AND aggmos.value < 3.0
@@ -178,6 +184,12 @@ fulldate = (SELECT max(fulldate) FROM aggregator agg1
 			AND agg1.itemid = agg.itemid
 			AND agg1.storeid = agg.storeid)
 GROUP BY agg.storeid, agg.itemid
+),
+current_soh AS (
+SELECT il.item_id, il.store_id, COALESCE(SUM(il.quantity * il.pack_size), 0) AS soh
+FROM item_line il
+WHERE (il.expiry_date IS NULL OR il.expiry_date >= current_date)
+GROUP BY il.item_id, il.store_id
 )
 SELECT
 s.code,
@@ -186,7 +198,7 @@ i.code as item_code,
 i.item_name,
 u.units,
 max(aggamc.value) as amc,
-SUM(quantity * pack_size) AS soh,
+COALESCE(max(current_soh.soh), 0) AS soh,
 max(aggmos.value) as mos,
 max(pos.confirm_date) as latest_po_date,
 max(pos.serial_number) as po_number,
@@ -198,7 +210,7 @@ FROM
 store s
 CROSS JOIN item i
 LEFT JOIN unit u ON i.unit_ID = u.id
-LEFT JOIN item_line il ON il.item_id = i.id AND il.store_id = s.id AND (expiry_date IS NULL OR expiry_date >= current_date)
+LEFT JOIN current_soh ON current_soh.item_id = i.id AND current_soh.store_id = s.id
 LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
 LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
 LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
@@ -207,7 +219,7 @@ WHERE
 s.name = '{{ store_name }}'
 AND i.id in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
 GROUP BY 1,2,3,4,5
-HAVING SUM(quantity * pack_size) < max(prev_soh.soh) AND SUM(quantity*pack_size) = 0
+HAVING COALESCE(max(current_soh.soh), 0) = 0
 
 ```
 
