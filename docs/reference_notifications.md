@@ -177,12 +177,6 @@ Sent every day, this notification lists all stock items that are completely out 
  WHERE dataElement = 'stockHistory'
  AND agg.itemid in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
  AND agg.storeid in (select id from store WHERE name = '{{ store_name }}')
- AND
- fulldate = (SELECT max(fulldate) FROM aggregator agg1
- 			WHERE agg1.dataElement = 'stockHistory'
- 			AND fulldate < CURRENT_DATE
- 			AND agg1.itemid = agg.itemid
- 			AND agg1.storeid = agg.storeid)
  GROUP BY agg.storeid, agg.itemid, agg.fulldate
  ),
  current_soh AS (
