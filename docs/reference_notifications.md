@@ -154,72 +154,68 @@ Sent every day, this notification lists all stock items that are completely out 
 #### Data Query — `stock_out_today`
 
 ```sql
- with pos AS(
-  SELECT
-    po.id,
-    po.store_id,
-    pol.item_id,
-    po.confirm_date,
-    po.serial_number,
-    n.name AS supplier_name,
-    pol.delivery_date_expected,
-    RANK() OVER (PARTITION BY po.store_id, pol.item_id ORDER BY po.confirm_date DESC) AS ranking,
-    pol.quan_adjusted_order-pol.quan_rec_to_date AS po_outstanding
-  FROM purchase_order po
-  JOIN purchase_order_line pol ON po.id = pol.purchase_order_id
-  JOIN name n ON po.name_id = n.id
-  WHERE po.status IN ('cn')
-  AND pol.quan_adjusted_order-pol.quan_rec_to_date > 0
-),
-prev_soh AS (
-SELECT agg.storeid, agg.itemid, max(value) AS soh
-FROM aggregator agg
-WHERE dataElement = 'stockHistory'
-AND agg.itemid in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
-AND agg.storeid in (select id from store WHERE name = '{{ store_name }}')
-AND
-fulldate = (SELECT max(fulldate) FROM aggregator agg1
-			WHERE agg1.dataElement = 'stockHistory'
-			AND fulldate < CURRENT_DATE
-			AND agg1.itemid = agg.itemid
-			AND agg1.storeid = agg.storeid)
-GROUP BY agg.storeid, agg.itemid
-),
-current_soh AS (
-SELECT il.item_id, il.store_id, COALESCE(SUM(il.quantity * il.pack_size), 0) AS soh
-FROM item_line il
-WHERE (il.expiry_date IS NULL OR il.expiry_date >= current_date)
-GROUP BY il.item_id, il.store_id
-)
-SELECT
-s.code,
-s.name as store_name,
-i.code as item_code,
-i.item_name,
-u.units,
-max(aggamc.value) as amc,
-COALESCE(max(current_soh.soh), 0) AS soh,
-max(aggmos.value) as mos,
-max(pos.confirm_date) as latest_po_date,
-max(pos.serial_number) as po_number,
-max(pos.po_outstanding) as stock_on_order,
-max(pos.delivery_date_expected) as delivery_date,
-max(pos.supplier_name) as supplier,
-max(prev_soh.soh) as prev_soh
-FROM
-store s
-CROSS JOIN item i
-LEFT JOIN unit u ON i.unit_ID = u.id
-LEFT JOIN current_soh ON current_soh.item_id = i.id AND current_soh.store_id = s.id
-LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
-LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
-LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
-LEFT JOIN prev_soh ON prev_soh.storeid = s.id AND prev_soh.itemid = i.id
-WHERE
-s.name = '{{ store_name }}'
-AND i.id in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
-GROUP BY 1,2,3,4,5
-HAVING COALESCE(max(current_soh.soh), 0) = 0
+  with pos AS(
+   SELECT
+     po.id,
+     po.store_id,
+     pol.item_id,
+     po.confirm_date,
+     po.serial_number,
+     n.name AS supplier_name,
+     pol.delivery_date_expected,
+     RANK() OVER (PARTITION BY po.store_id, pol.item_id ORDER BY po.confirm_date DESC) AS ranking,
+     pol.quan_adjusted_order-pol.quan_rec_to_date AS po_outstanding
+   FROM purchase_order po
+   JOIN purchase_order_line pol ON po.id = pol.purchase_order_id
+   JOIN name n ON po.name_id = n.id
+   WHERE po.status IN ('cn')
+   AND pol.quan_adjusted_order-pol.quan_rec_to_date > 0
+ ),
+ prev_soh AS (
+ SELECT agg.storeid, agg.itemid,agg.fulldate, max(value) AS soh
+ FROM aggregator agg
+ WHERE dataElement = 'stockHistory'
+ AND agg.itemid in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
+ AND agg.storeid in (select id from store WHERE name = '{{ store_name }}')
+ GROUP BY agg.storeid, agg.itemid, agg.fulldate
+ ),
+ current_soh AS (
+ SELECT il.item_id, il.store_id, COALESCE(SUM(il.quantity * il.pack_size), 0) AS soh
+ FROM item_line il
+ WHERE (il.expiry_date IS NULL OR il.expiry_date >= current_date)
+ GROUP BY il.item_id, il.store_id
+ )
+ SELECT
+ s.code,
+ s.name as store_name,
+ i.code as item_code,
+ i.item_name,
+ u.units,
+ prev_soh.fulldate,
+ max(aggamc.value) as amc,
+ COALESCE(max(current_soh.soh), 0) AS soh,
+ max(aggmos.value) as mos,
+ max(pos.confirm_date) as latest_po_date,
+ max(pos.serial_number) as po_number,
+ max(pos.po_outstanding) as stock_on_order,
+ max(pos.delivery_date_expected) as delivery_date,
+ max(pos.supplier_name) as supplier,
+ max(prev_soh.soh) as prev_soh
+ FROM
+ store s
+ CROSS JOIN item i
+ LEFT JOIN unit u ON i.unit_ID = u.id
+ LEFT JOIN current_soh ON current_soh.item_id = i.id AND current_soh.store_id = s.id
+ LEFT JOIN aggregator aggamc ON i.id = aggamc.itemid AND aggamc.storeid = s.id AND aggamc.dataelement='AMC'
+ LEFT JOIN aggregator aggmos ON i.id = aggmos.itemid AND aggmos.storeid = s.id AND aggmos.dataelement='currentMOS'
+ LEFT JOIN pos ON pos.store_id = s.id AND pos.item_id = i.id AND pos.ranking = 1
+ LEFT JOIN prev_soh ON prev_soh.storeid = s.id AND prev_soh.itemid = i.id
+ WHERE
+ s.name = '{{ store_name }}'
+ AND i.id in (select item_id from list_master ml JOIN list_master_line mll ON ml.id = mll.item_master_ID WHERE ml.description ='{{ master_list_name }}')
+ GROUP BY 1,2,3,4,5,6
+ HAVING COALESCE(max(prev_soh.soh), 0) = 0
+ AND prev_soh.fulldate = CURRENT_DATE - 1
 
 ```
 
