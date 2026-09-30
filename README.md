@@ -86,6 +86,22 @@ Until a documentation website is established, you can find some docs for setting
 
 See the [FAQ here](./docs/faq.md)
 
+## Troubleshooting
+
+### Windows service fails to start with error 1053
+
+If the Notify service fails to start immediately with `Error 1053: The service did not respond to the start or control request in a timely fashion` and no Notify log is created, check the Windows Event Viewer (Windows Logs > Application). If it reports that `libpq.dll` was not found, Notify can't find the PostgreSQL client libraries.
+
+Notify needs PostgreSQL's `bin` and `lib` folders on the system `PATH`. The service can fail if PostgreSQL isn't installed or isn't registered to environment path. To fix it:
+
+1. Add both folders to the **system** `PATH` environment variable, for example:
+   - `C:\Program Files\PostgreSQL\16\bin`
+   - `C:\Program Files\PostgreSQL\16\lib`
+2. Restart the server. Windows services don't pick up `PATH` changes until a restart.
+3. Start the Notify service again.
+
+If PostgreSQL is not installed, download and install it from the official website: https://www.postgresql.org/download/. Make sure to add the `bin` and `lib` folders to the system `PATH` as described above.s
+
 ## Contributing
 
 To contribute, there are several key areas
